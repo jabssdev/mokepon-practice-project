@@ -185,6 +185,32 @@ input:checked + label {
 	gap: 0.5rem;
 }
 
+#ver-mapa {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 2rem;
+}
+
+#mapa {
+	border: 2px solid #fff;
+	border-radius: 20px;
+	background-color: #eee;
+}
+
+.controles-movimiento {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.controles-horizontales {
+	display: flex;
+	gap: 0.5rem;
+}
+
 @media (max-width: 500px) {
 	.tarjeta-de-mokepon {
 		width: 150px;

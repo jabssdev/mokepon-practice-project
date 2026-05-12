@@ -19,6 +19,9 @@ const MAPA_VENTAJAS = Object.freeze({
 });
 
 const TOTAL_RONDAS = 5;
+const VELOCIDAD_MOVIMIENTO = 5;
+const CANVAS_ANCHO_MAX = 400;
+const CANVAS_ALTO_MAX = 300;
 
 // clase mokepon
 
@@ -28,6 +31,14 @@ class Mokepon {
 		this.foto = foto;
 		this.tipoPrincipal = tipoPrincipal;
 		this.ataques = this.#generarAtaques();
+		this.x = 20;
+		this.y = 30;
+		this.ancho = 80;
+		this.alto = 80;
+		this.mapaFoto = new Image();
+		this.mapaFoto.src = foto;
+		this.velocidadX = 0;
+		this.velocidadY = 0;
 	}
 
 	#generarAtaques() {
@@ -45,6 +56,15 @@ class Mokepon {
 
 	#crearAtaque(tipo) {
 		return { tipo, emoji: EMOJI_ATAQUE[tipo] };
+	}
+
+	pintar(ctx) {
+		ctx.drawImage(this.mapaFoto, this.x, this.y, this.ancho, this.alto);
+	}
+
+	actualizarPosicion() {
+		this.x += this.velocidadX;
+		this.y += this.velocidadY;
 	}
 }
 
@@ -66,6 +86,8 @@ function crearEstadoInicial() {
 		ataquesEnemigo: [],
 		victoriasJugador: 0,
 		victoriasEnemigo: 0,
+		ctx: null,
+		intervalo: null,
 	};
 }
 
@@ -90,6 +112,12 @@ function cachearElementosDOM() {
 	DOM.mascotaEnemigo = document.getElementById("mascota-enemigo");
 	DOM.vidasJugador = document.getElementById("vidas-jugador");
 	DOM.vidasEnemigo = document.getElementById("vidas-enemigo");
+	DOM.sectionVerMapa = document.getElementById("ver-mapa");
+	DOM.canvas = document.getElementById("mapa");
+	DOM.botonMoverArriba = document.getElementById("boton-mover-arriba");
+	DOM.botonMoverAbajo = document.getElementById("boton-mover-abajo");
+	DOM.botonMoverIzquierda = document.getElementById("boton-mover-izquierda");
+	DOM.botonMoverDerecha = document.getElementById("boton-mover-derecha");
 }
 
 // inicializar juego
@@ -99,11 +127,41 @@ function iniciarJuego() {
 
 	DOM.sectionSeleccionarAtaque.style.display = "none";
 	DOM.sectionReiniciar.style.display = "none";
+	DOM.sectionVerMapa.style.display = "none";
 
 	renderizarTarjetasMokepones();
 
 	DOM.botonMascota.addEventListener("click", seleccionarMascotaJugador);
 	DOM.botonReiniciar.addEventListener("click", reiniciarJuego);
+
+	registrarEventosMovimiento();
+}
+
+function registrarEventosMovimiento() {
+	const controles = [
+		{ boton: DOM.botonMoverArriba, vx: 0, vy: -VELOCIDAD_MOVIMIENTO },
+		{ boton: DOM.botonMoverAbajo, vx: 0, vy: VELOCIDAD_MOVIMIENTO },
+		{ boton: DOM.botonMoverIzquierda, vx: -VELOCIDAD_MOVIMIENTO, vy: 0 },
+		{ boton: DOM.botonMoverDerecha, vx: VELOCIDAD_MOVIMIENTO, vy: 0 },
+	];
+
+	controles.forEach(({ boton, vx, vy }) => {
+		const iniciar = () => {
+			estado.mascotaJugador.velocidadX = vx;
+			estado.mascotaJugador.velocidadY = vy;
+		};
+
+		boton.addEventListener("mousedown", iniciar);
+		boton.addEventListener("mouseup", detenerMovimiento);
+		boton.addEventListener("touchstart", (e) => {
+			e.preventDefault();
+			iniciar();
+		});
+		boton.addEventListener("touchend", (e) => {
+			e.preventDefault();
+			detenerMovimiento();
+		});
+	});
 }
 
 // renderizado
@@ -136,8 +194,6 @@ function renderizarTarjetasMokepones() {
 		fragment.appendChild(input);
 		fragment.appendChild(label);
 	});
-
-	console.log(fragment);
 
 	DOM.containerTarjetas.appendChild(fragment);
 }
@@ -177,7 +233,25 @@ function seleccionarMascotaJugador() {
 	registrarEventosAtaque();
 
 	DOM.sectionSeleccionarMascota.style.display = "none";
-	DOM.sectionSeleccionarAtaque.style.display = "flex";
+	DOM.sectionVerMapa.style.display = "flex";
+
+	// Configuración del canvas
+	DOM.canvas.width = CANVAS_ANCHO_MAX;
+	DOM.canvas.height = CANVAS_ALTO_MAX;
+	estado.ctx = DOM.canvas.getContext("2d");
+
+	estado.intervalo = setInterval(dibujarMapa, 50);
+}
+
+function dibujarMapa() {
+	estado.mascotaJugador.actualizarPosicion();
+	estado.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
+	estado.mascotaJugador.pintar(estado.ctx);
+}
+
+function detenerMovimiento() {
+	estado.mascotaJugador.velocidadX = 0;
+	estado.mascotaJugador.velocidadY = 0;
 }
 
 function seleccionarMascotaEnemigo() {
@@ -189,7 +263,7 @@ function seleccionarMascotaEnemigo() {
 // secuencia de ataques
 
 function registrarEventosAtaque() {
-	const botones = document.querySelectorAll(".boton-de-ataque");
+	const botones = DOM.containerAtaques.querySelectorAll(".boton-de-ataque");
 
 	botones.forEach((boton) => {
 		boton.addEventListener("click", manejarAtaque);
