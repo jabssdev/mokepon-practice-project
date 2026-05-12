@@ -239,14 +239,40 @@ function seleccionarMascotaJugador() {
 	DOM.canvas.width = CANVAS_ANCHO_MAX;
 	DOM.canvas.height = CANVAS_ALTO_MAX;
 	estado.ctx = DOM.canvas.getContext("2d");
+	iniciarMapa();
+}
 
+function iniciarMapa() {
 	estado.intervalo = setInterval(dibujarMapa, 50);
+
+	window.addEventListener("keydown", manejarTeclado);
+	window.addEventListener("keyup", detenerMovimiento);
 }
 
 function dibujarMapa() {
 	estado.mascotaJugador.actualizarPosicion();
 	estado.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
 	estado.mascotaJugador.pintar(estado.ctx);
+}
+
+function manejarTeclado(evento) {
+	const teclas = {
+		ArrowUp: { vx: 0, vy: -VELOCIDAD_MOVIMIENTO },
+		ArrowDown: { vx: 0, vy: VELOCIDAD_MOVIMIENTO },
+		ArrowLeft: { vx: -VELOCIDAD_MOVIMIENTO, vy: 0 },
+		ArrowRight: { vx: VELOCIDAD_MOVIMIENTO, vy: 0 },
+		w: { vx: 0, vy: -VELOCIDAD_MOVIMIENTO },
+		s: { vx: 0, vy: VELOCIDAD_MOVIMIENTO },
+		a: { vx: -VELOCIDAD_MOVIMIENTO, vy: 0 },
+		d: { vx: VELOCIDAD_MOVIMIENTO, vy: 0 },
+	};
+
+	const movimiento = teclas[evento.key];
+
+	if (movimiento) {
+		estado.mascotaJugador.velocidadX = movimiento.vx;
+		estado.mascotaJugador.velocidadY = movimiento.vy;
+	}
 }
 
 function detenerMovimiento() {
