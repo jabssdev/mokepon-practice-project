@@ -66,6 +66,22 @@ class Mokepon {
 		this.x += this.velocidadX;
 		this.y += this.velocidadY;
 	}
+
+	hayColision(enemigo) {
+		const { y: arriba, x: izquierda, ancho, alto } = this;
+		const abajo = arriba + alto;
+		const derecha = izquierda + ancho;
+
+		const { y: arribaEnemigo, x: izquierdaEnemigo, ancho: anchoEnemigo, alto: altoEnemigo } = enemigo;
+		const abajoEnemigo = arribaEnemigo + altoEnemigo;
+		const derechaEnemigo = izquierdaEnemigo + anchoEnemigo;
+
+		if (abajo < arribaEnemigo || arriba > abajoEnemigo || derecha < izquierdaEnemigo || izquierda > derechaEnemigo) {
+			return false;
+		}
+
+		return true;
+	}
 }
 
 // datos del juego
@@ -232,15 +248,9 @@ function seleccionarMascotaJugador() {
 
 	const plantilla = MOKEPONES.find((m) => m.nombre.toLowerCase() === seleccionado.id);
 
-	estado.mascotaJugador = new Mokepon(
-		plantilla.nombre,
-		plantilla.foto,
-		plantilla.tipoPrincipal,
-		plantilla.mapaFoto.src
-	);
+	estado.mascotaJugador = new Mokepon(plantilla.nombre, plantilla.foto, plantilla.tipoPrincipal, plantilla.mapaFoto.src);
 	DOM.mascotaJugador.textContent = estado.mascotaJugador.nombre;
 
-	seleccionarMascotaEnemigo();
 	renderizarBotonesAtaque(estado.mascotaJugador.ataques);
 	registrarEventosAtaque();
 
@@ -268,7 +278,10 @@ function dibujarMapa() {
 	estado.ctx.drawImage(estado.mapaBackground, 0, 0, DOM.canvas.width, DOM.canvas.height);
 	estado.mascotaJugador.pintar(estado.ctx);
 
-	MOKEPONES_ENEMIGOS.forEach((enemigo) => enemigo.pintar(estado.ctx));
+	MOKEPONES_ENEMIGOS.forEach((enemigo) => {
+		enemigo.pintar(estado.ctx);
+		revisarColision(enemigo);
+	});
 
 	estado.intervalo = requestAnimationFrame(dibujarMapa);
 }
@@ -293,6 +306,19 @@ function manejarTeclado(evento) {
 	}
 }
 
+function revisarColision(enemigo) {
+	if (estado.mascotaJugador.hayColision(enemigo)) {
+		detenerMovimiento();
+		cancelAnimationFrame(estado.intervalo);
+
+		estado.mascotaEnemigo = enemigo;
+		DOM.mascotaEnemigo.textContent = enemigo.nombre;
+
+		DOM.sectionVerMapa.style.display = "none";
+		DOM.sectionSeleccionarAtaque.style.display = "flex";
+	}
+}
+
 function detenerMovimiento() {
 	estado.mascotaJugador.velocidadX = 0;
 	estado.mascotaJugador.velocidadY = 0;
@@ -301,13 +327,8 @@ function detenerMovimiento() {
 function seleccionarMascotaEnemigo() {
 	const indice = aleatorio(0, MOKEPONES.length - 1);
 	const plantilla = MOKEPONES[indice];
-	estado.mascotaEnemigo = new Mokepon(
-		plantilla.nombre,
-		plantilla.foto,
-		plantilla.tipoPrincipal,
-		plantilla.mapaFoto.src
-	);
-	DOM.mascotaEnemigo.textContent = estado.mascotaEnemigo.nombre;
+	estado.mascotaEnemigo = new Mokepon(plantilla.nombre, plantilla.foto, plantilla.tipoPrincipal, plantilla.mapaFoto.src);
+	DOM.mascotaEnemigo.textContent = estado.mascotaEnemigo.nombre; 
 }
 
 // secuencia de ataques
