@@ -21,6 +21,9 @@ const MAPA_VENTAJAS = Object.freeze({
 const TOTAL_RONDAS = 5;
 const VELOCIDAD_MOVIMIENTO = 5;
 const TAMANO_MOKEPON = 50;
+const DISTANCIA_MINIMA_SPAWN = TAMANO_MOKEPON * 2;
+const COLOR_GLOW_JUGADOR = "#00e5ff";
+const INTENSIDAD_GLOW = 14;
 
 function calcularDimensionesCanvas() {
 	let ancho = window.innerWidth - 20;
@@ -75,13 +78,31 @@ class Mokepon {
 		return { tipo, emoji: EMOJI_ATAQUE[tipo] };
 	}
 
-	posicionarAleatoriamente(anchoCanvas, altoCanvas) {
-		this.x = aleatorio(0, anchoCanvas - this.ancho);
-		this.y = aleatorio(0, altoCanvas - this.alto);
+	posicionarAleatoriamente(anchoCanvas, altoCanvas, evitar = []) {
+		const maxIntentos = 100;
+
+		for (let i = 0; i < maxIntentos; i++) {
+			this.x = aleatorio(0, anchoCanvas - this.ancho);
+			this.y = aleatorio(0, altoCanvas - this.alto);
+
+			const sinColision = evitar.every((otro) => !this.hayColisionConMargen(otro, DISTANCIA_MINIMA_SPAWN));
+
+			if (sinColision) return;
+		}
 	}
 
-	pintar(ctx) {
+	pintar(ctx, esJugador = false) {
+		if (esJugador) {
+			ctx.save();
+			ctx.shadowColor = COLOR_GLOW_JUGADOR;
+			ctx.shadowBlur = INTENSIDAD_GLOW;
+		}
+
 		ctx.drawImage(this.mapaFoto, this.x, this.y, this.ancho, this.alto);
+
+		if (esJugador) {
+			ctx.restore();
+		}
 	}
 
 	actualizarPosicion(anchoCanvas, altoCanvas) {
@@ -95,27 +116,35 @@ class Mokepon {
 	}
 
 	hayColision(enemigo) {
-		const derecha = this.x + this.ancho;
-		const abajo = this.y + this.alto;
-		const derechaEnemigo = enemigo.x + enemigo.ancho;
-		const abajoEnemigo = enemigo.y + enemigo.alto;
+		return this.hayColisionConMargen(enemigo, 0);
+	}
 
-		return !(abajo < enemigo.y || this.y > abajoEnemigo || derecha < enemigo.x || this.x > derechaEnemigo);
+	hayColisionConMargen(otro, margen) {
+		const derecha = this.x + this.ancho + margen;
+		const abajo = this.y + this.alto + margen;
+		const derechaOtro = otro.x + otro.ancho + margen;
+		const abajoOtro = otro.y + otro.alto + margen;
+
+		return !(abajo < otro.y - margen || this.y - margen > abajoOtro || derecha < otro.x - margen || this.x - margen > derechaOtro);
 	}
 }
 
-// FACTORIES — Crean instancias frescas de Mokepones
+// FACTORIES
 
 function crearMokeponDesdeData(data) {
 	return new Mokepon(data.nombre, data.foto, data.tipo, data.fotoMapa);
 }
 
-function crearEnemigos(anchoCanvas, altoCanvas) {
-	return MOKEPONES_DATA.map((data) => {
+function crearEnemigos(anchoCanvas, altoCanvas, jugador) {
+	const enemigos = [];
+
+	for (const data of MOKEPONES_DATA) {
 		const enemigo = crearMokeponDesdeData(data);
-		enemigo.posicionarAleatoriamente(anchoCanvas, altoCanvas);
-		return enemigo;
-	});
+		enemigo.posicionarAleatoriamente(anchoCanvas, altoCanvas, [jugador, ...enemigos]);
+		enemigos.push(enemigo);
+	}
+
+	return enemigos;
 }
 
 // ESTADO DEL JUEGO
@@ -338,7 +367,7 @@ function configurarCanvas() {
 	estado.mapaBackground.src = "./assets/mokemap.png";
 
 	estado.mascotaJugador.posicionarAleatoriamente(ancho, alto);
-	estado.enemigosEnMapa = crearEnemigos(ancho, alto);
+	estado.enemigosEnMapa = crearEnemigos(ancho, alto, estado.mascotaJugador);
 }
 
 // MAPA Y GAME LOOP
@@ -366,7 +395,7 @@ function dibujarMapa() {
 	estado.ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
 	estado.ctx.drawImage(estado.mapaBackground, 0, 0, DOM.canvas.width, DOM.canvas.height);
 
-	estado.mascotaJugador.pintar(estado.ctx);
+	estado.mascotaJugador.pintar(estado.ctx, true);
 
 	for (const enemigo of estado.enemigosEnMapa) {
 		enemigo.pintar(estado.ctx);
