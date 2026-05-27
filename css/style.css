@@ -10,6 +10,8 @@ body {
 	padding: 1rem;
 }
 
+/* Layout inicial */
+
 #seleccionar-mascota {
 	display: flex;
 	flex-direction: column;
@@ -52,6 +54,11 @@ body {
 
 .tarjeta-de-mokepon img {
 	width: 80px;
+	height: auto;
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: cover;
+	object-position: center;
 }
 
 input {
@@ -71,12 +78,42 @@ input:checked + label {
 	color: white;
 	font-size: 1rem;
 	cursor: pointer;
-	transition: transform 0.3s ease;
+	transition: transform 0.3s ease-in-out;
 }
 
 #boton-mascota:hover {
 	transform: scale(1.03);
 }
+
+/* Layout de mapa */
+
+#ver-mapa {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 2rem;
+}
+
+#mapa {
+	border: 2px solid #fff;
+	border-radius: 20px;
+	background-color: #eee;
+}
+
+.controles-movimiento {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.controles-horizontales {
+	display: flex;
+	gap: 0.5rem;
+}
+
+/* Layout de batalla */
 
 #seleccionar-ataque {
 	display: flex;
@@ -185,31 +222,7 @@ input:checked + label {
 	gap: 0.5rem;
 }
 
-#ver-mapa {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	gap: 2rem;
-}
-
-#mapa {
-	border: 2px solid #fff;
-	border-radius: 20px;
-	background-color: #eee;
-}
-
-.controles-movimiento {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.controles-horizontales {
-	display: flex;
-	gap: 0.5rem;
-}
+/* Responsive */
 
 @media (max-width: 500px) {
 	.tarjeta-de-mokepon {
