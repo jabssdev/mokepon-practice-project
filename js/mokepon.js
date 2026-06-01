@@ -165,6 +165,7 @@ function crearEstadoInicial() {
 
 let estado = crearEstadoInicial();
 let ultimoEnvioPosicion = 0;
+let intervaloAtaques;
 
 // dom elements
 
@@ -223,7 +224,7 @@ function joinGame() {
 		});
 }
 
-// CONTROLES DE MOVIMIENTO
+// controles
 
 function registrarEventosMovimiento() {
 	const controles = [
@@ -280,7 +281,7 @@ function detenerMovimiento() {
 	estado.mascotaJugador.detener();
 }
 
-// RENDERIZADO
+// renderizado
 
 function renderizarTarjetasMokepones() {
 	const fragment = document.createDocumentFragment();
@@ -339,7 +340,7 @@ function renderizarRonda(atqJugador, atqEnemigo) {
 	DOM.ataquesDelEnemigo.appendChild(pEnemigo);
 }
 
-// SELECCIÓN DE MASCOTA
+// selección de mascota
 
 function seleccionarMascotaJugador() {
 	const seleccionado = document.querySelector('input[name="mascota"]:checked');
@@ -393,7 +394,7 @@ function configurarCanvas() {
 	estado.mascotaJugador.posicionarAleatoriamente(ancho, alto);
 }
 
-// MAPA Y GAME LOOP
+// mapa
 
 function iniciarMapa() {
 	estado.colisionDetectada = false;
@@ -450,8 +451,28 @@ function enviarPosicion(x, y) {
 		body: JSON.stringify({ x, y }),
 	})
 		.then((res) => res.json())
-		.then(({ enemigos }) => {
+		.then(({ enemigos, enemigoId }) => {
 			actualizarEnemigosEnMapa(enemigos);
+
+			if (enemigoId && !estado.colisionDetectada) {
+				estado.colisionDetectada = true;
+				let enemigo = estado.enemigosEnMapa.find((e) => e.id === enemigoId);
+				if (!enemigo) {
+					const datosEnemigoServidor = enemigos.find((e) => e.id === enemigoId);
+					if (datosEnemigoServidor && datosEnemigoServidor.mokepon) {
+						const plantilla = MOKEPONES_DATA.find((data) => data.nombre === datosEnemigoServidor.mokepon.nombre);
+						if (plantilla) {
+							enemigo = crearMokeponDesdeData(plantilla);
+							enemigo.id = enemigoId;
+						}
+					}
+				}
+				if (enemigo) {
+					manejarColisionRecibida(enemigo);
+				} else {
+					estado.colisionDetectada = false;
+				}
+			}
 		})
 		.catch((err) => console.error("Error enviando posición:", err));
 }
@@ -484,6 +505,29 @@ function manejarColision(enemigo) {
 
 	DOM.sectionVerMapa.style.display = "none";
 	DOM.sectionSeleccionarAtaque.style.display = "flex";
+
+	notificarColision(enemigo.id);
+}
+
+function manejarColisionRecibida(enemigo) {
+	detenerMovimiento();
+	detenerMapa();
+
+	estado.mascotaEnemigo = enemigo;
+	DOM.mascotaEnemigo.textContent = enemigo.nombre;
+
+	DOM.sectionVerMapa.style.display = "none";
+	DOM.sectionSeleccionarAtaque.style.display = "flex";
+}
+
+function notificarColision(enemigoId) {
+	fetch(`http://localhost:3000/mokepon/${estado.playerId}/colision`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ enemigoId }),
+	}).catch((err) => console.error("Error al notificar colisión:", err));
 }
 
 // ataque system
@@ -504,20 +548,54 @@ function manejarAtaque(evento) {
 	boton.style.backgroundColor = "#112f58";
 	boton.disabled = true;
 
-	generarAtaqueEnemigo();
-
 	if (estado.ataquesJugador.length === TOTAL_RONDAS) {
-		combate();
+		enviarAtaques();
 	}
 }
 
-function generarAtaqueEnemigo() {
-	const ataquesEnemigo = estado.mascotaEnemigo.ataques;
-	const indice = aleatorio(0, ataquesEnemigo.length - 1);
-	estado.ataquesEnemigo.push(ataquesEnemigo[indice].tipo);
+function enviarAtaques() {
+	DOM.resultado.innerHTML = "Esperando los ataques del enemigo...";
+
+	fetch(`http://localhost:3000/mokepon/${estado.playerId}/ataques`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			ataques: estado.ataquesJugador,
+		}),
+	})
+		.then(() => {
+			intervaloAtaques = setInterval(obtenerAtaquesEnemigo, 1000);
+		})
+		.catch((err) => {
+			console.error("Error al enviar ataques:", err);
+			DOM.resultado.innerHTML = "Error al enviar los ataques";
+		});
 }
 
-// COMBATE
+function obtenerAtaquesEnemigo() {
+	const enemigoId = estado.mascotaEnemigo?.id;
+	if (!enemigoId) return;
+
+	fetch(`http://localhost:3000/mokepon/${enemigoId}/ataques`)
+		.then((res) => {
+			if (!res.ok) {
+				throw new Error("Error al obtener ataques del enemigo");
+			}
+			return res.json();
+		})
+		.then(({ ataques }) => {
+			if (ataques.length === TOTAL_RONDAS) {
+				clearInterval(intervaloAtaques);
+				estado.ataquesEnemigo = ataques;
+				combate();
+			}
+		})
+		.catch((err) => console.error("Error al obtener ataques:", err));
+}
+
+// combate
 
 function combate() {
 	for (let i = 0; i < TOTAL_RONDAS; i++) {
@@ -562,7 +640,7 @@ function mostrarResultadoFinal() {
 	DOM.sectionReiniciar.style.display = "block";
 }
 
-// UTILIDADES
+// utilities
 
 function reiniciarJuego() {
 	location.reload();

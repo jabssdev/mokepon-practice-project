@@ -11,6 +11,8 @@ const jugadores = [];
 class Jugador {
 	constructor(id) {
 		this.id = id;
+		this.ataques = [];
+		this.enemigoId = null;
 	}
 
 	asignarMokepon(mokepon) {
@@ -20,6 +22,10 @@ class Jugador {
 	actualizarPosicion(x, y) {
 		this.x = x;
 		this.y = y;
+	}
+
+	asignarAtaques(ataques) {
+		this.ataques = ataques;
 	}
 }
 
@@ -69,7 +75,53 @@ app.post("/mokepon/:id/posicion", (req, res) => {
 
 	const enemigos = jugadores.filter((jugador) => jugador.id !== playerId);
 
-	res.send({ enemigos });
+	res.send({
+		enemigos,
+		enemigoId: player.enemigoId || null
+	});
+});
+
+app.post("/mokepon/:id/colision", (req, res) => {
+	const playerId = req.params.id || "";
+	const enemigoId = req.body.enemigoId || "";
+
+	const player = jugadores.find((jugador) => jugador.id === playerId);
+	const enemigo = jugadores.find((jugador) => jugador.id === enemigoId);
+
+	if (player && enemigo) {
+		player.enemigoId = enemigoId;
+		enemigo.enemigoId = playerId;
+	}
+
+	res.end();
+});
+
+app.post("/mokepon/:id/ataques", (req, res) => {
+	const playerId = req.params.id || "";
+	const ataques = req.body.ataques || [];
+
+	const player = jugadores.find((jugador) => jugador.id === playerId);
+
+	if (!player) {
+		return res.status(400).send("Jugador no encontrado");
+	}
+
+	player.asignarAtaques(ataques);
+
+	res.end();
+});
+
+app.get("/mokepon/:id/ataques", (req, res) => {
+	const playerId = req.params.id || "";
+	const player = jugadores.find((jugador) => jugador.id === playerId);
+
+	if (!player) {
+		return res.status(400).send("Jugador no encontrado");
+	}
+
+	res.send({
+		ataques: player.ataques || []
+	});
 });
 
 app.listen(port, () => {
